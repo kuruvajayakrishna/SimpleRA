@@ -21,7 +21,8 @@ enum QueryType
     SOURCE,
     UNDETERMINED,
     LOADMATRIX,
-    TRANSPOSE
+    TRANSPOSE,
+    INSERT
 };
 
 enum BinaryOperator
@@ -70,6 +71,8 @@ public:
     string indexColumnName = "";
     string indexRelationName = "";
     string count="";
+
+    string values="";
 
     BinaryOperator joinBinaryOperator = NO_BINOP_CLAUSE;
     string joinResultRelationName = "";

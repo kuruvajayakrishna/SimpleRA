@@ -62,7 +62,8 @@ public:
     vector<string> get_bucket_entries(string bucket_name);
     long long hash(vector<int>row,long long hash_value,uint count,long long prev_index);
     void re_hashing(long long bucket_no,long long hash_value,uint count);
-
+    bool update_bucket_entries(long long bucket_no,long long overflow_bucket_no,vector<int>row);
+    bool insert(vector<int>row);
     /**
  * @brief Static function that takes a vector of valued and prints them out in a
  * comma seperated format.

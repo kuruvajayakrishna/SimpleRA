@@ -56,10 +56,13 @@ void executeINDEX()
 {
     logger.log("executeINDEX");
     Table* table = tableCatalogue.getTable(parsedQuery.indexRelationName);
+    table->indexed=true;
     if(parsedQuery.indexingStrategy == BTREE){
         //call for BTREE_indexing.cpp
+        table->indexingStrategy=BTREE;
     }
     else if(parsedQuery.indexingStrategy == HASH){
+       table->indexingStrategy=HASH;
        table->linear_hashing(parsedQuery.indexColumnName,stoi(parsedQuery.count));
     }
     return;

@@ -265,7 +265,7 @@ void Table::linear_hashing(string column_name,long long M)
 }
 vector<string> Table::get_bucket_entries(string bucket_name)
 {
-    ifstream fin(bucket_name,ios::out);
+    ifstream fin("../data/temp/"+bucket_name,ios::out);
     vector<string>rows;
     string line;
     while(getline(fin,line))
@@ -296,13 +296,16 @@ long long Table::hash(vector<int>row,long long hash_value,uint count,long long p
           if(rows.size()< bucket_capacity)
           {
                    
-                   ofstream fout(bucket_name,ios::out);
-                   for(int i=0;i<count;i++)
+                   ofstream fout("../data/temp/"+bucket_name,ios::app);
+                   //cout<<"11"<<endl;
+                   for(int i=0;i<row.size();i++)
                    {
                        if(i!=0)
                          fout<<",";
+                       //cout<<row[i]<<",";
                        fout<<row[i];
                    }
+                   //cout<<endl;
                    fout<<endl;
                    fout.close();
                    insert_flag=true;
@@ -311,19 +314,24 @@ long long Table::hash(vector<int>row,long long hash_value,uint count,long long p
       }   
       if(insert_flag==false)
       {
-          string new_overflow_bucket=bucket_info.first+"_"+"overflow"+"_"+to_string(overflow_buckets.size());
+          string new_overflow_bucket=bucket_list[bucket_no].first+"_"+"overflow"+"_"+to_string(overflow_buckets.size());
           overflow_buckets.push_back(new_overflow_bucket);
-          ofstream fout(new_overflow_bucket,ios::out);
-          for(int i=0;i<count;i++)
+          bucket_list[bucket_no].second.push_back(new_overflow_bucket);
+          ofstream fout("../data/temp/"+new_overflow_bucket,ios::out);
+          //cout<<"22"<<" "<<row.size()<<" "<<count<<endl;
+          for(int i=0;i<row.size();i++)
              {
                  if(i!=0)
                    fout<<",";
+                 cout<<row[i]<<",";
                  fout<<row[i];
               }
+              cout<<endl;
            fout<<endl;
            fout.close();
       }
-    string bucket_name=this->tableName+"_"+"bucket"+"_"+to_string(this->bucket_size)+to_string(this->split_ptr);
+    string bucket_name=this->tableName+"_"+"bucket"+"_"+to_string(this->bucket_size+this->split_ptr);
+    cout<<bucket_name<<endl;
     this->bucket_list.push_back({bucket_name,{}});
     re_hashing(split_ptr,2*this->bucket_size,count);
     split_ptr=(split_ptr+1)%this->bucket_size;
@@ -335,7 +343,7 @@ long long Table::hash(vector<int>row,long long hash_value,uint count,long long p
   else
   {
      string bucket_name=bucket_info.first;
-     ofstream foutput(bucket_name,ios::out);
+     ofstream foutput("../data/temp/"+bucket_name,ios::app);
      for(int i=0;i<row.size();i++)
      {
          if (i != 0)
@@ -346,6 +354,48 @@ long long Table::hash(vector<int>row,long long hash_value,uint count,long long p
      foutput.close();
   }
   return bucket_no;
+}
+bool Table::update_bucket_entries(long long bucket_no,long long overflow_bucket_no,vector<int>row)
+{
+    pair<string,vector<string>>bucket_info=this->bucket_list[bucket_no];
+    vector<string>rows=get_bucket_entries(bucket_info.first);
+    if(rows.size()< this->bucket_capacity)
+    {
+        string bucket_name=bucket_info.first;
+        ofstream foutput("../data/temp/"+bucket_name,ios::app);
+        for(int i=0;i<row.size();i++)
+        {
+            if (i != 0)
+                foutput << ",";
+            foutput << row[i];
+        }
+        foutput<<endl;
+        foutput.close();
+        return true;
+    }
+    else
+    {
+        vector<string>overflow_buckets=bucket_info.second;
+        for(int i=0;i<overflow_bucket_no;i++)
+        {
+            vector<string>rows=get_bucket_entries(overflow_buckets[i]);
+            if(rows.size()< this->bucket_capacity)
+            {
+                ofstream foutput("../data/temp/"+overflow_buckets[i],ios::app);
+                for(int i=0;i<row.size();i++)
+                {
+                    if (i != 0)
+                        foutput << ",";
+                    foutput << row[i];
+                }
+                foutput<<endl;
+                foutput.close();
+                return true;
+            }
+        }
+    }
+    return false;
+    
 }
 void Table::re_hashing(long long bucket_no,long long hash_value,uint count)
 {
@@ -369,14 +419,24 @@ void Table::re_hashing(long long bucket_no,long long hash_value,uint count)
             rows.erase(rows.begin()+i);
         }
     }
+     ofstream foutput("../data/temp/"+bucket_info.first,ios::out);
+     for(int i=0;i<rows.size();i++)
+     {
+        // cout<<rows[i]<<endl;
+         foutput << rows[i];
+         foutput<<endl;
+     }
+     foutput.close();
     vector<string>overflow_buckets=bucket_info.second;
     int i=0;
     while(i<overflow_buckets.size())
     {
+        cout<<"entered rehasing of overflow buckets"<<endl;
         string overflow_bucket_name=overflow_buckets[i];
         vector<string>rows=get_bucket_entries(overflow_bucket_name);
-        for(int j=0;j<rows.size();j++)
+        for(int j=0;j<rows.size();)
         {
+          cout<<rows[i]<<endl;
           vector<int>row;
           stringstream s(rows[i]);
           string token;
@@ -386,7 +446,10 @@ void Table::re_hashing(long long bucket_no,long long hash_value,uint count)
           }
           if(bucket_no==hash(row,hash_value,count,bucket_no))
            {
-              j++;
+              if(update_bucket_entries(bucket_no,i,row)){
+                rows.erase(rows.begin()+j);
+              }
+              else j++;
            }
            else
            {
@@ -395,12 +458,65 @@ void Table::re_hashing(long long bucket_no,long long hash_value,uint count)
         }
         if(rows.size()==0)
         {
+            ofstream foutput("../data/temp/"+overflow_bucket_name,ios::out);
+            for(int i=0;i<rows.size();i++)
+            {
+                foutput << rows[i];
+                foutput<<endl;
+            }
+            foutput.close();
             overflow_buckets.erase(overflow_buckets.begin()+i);
+            //std::filesystem::remove(overflow_bucket_name);
         }
-        else i++;
+        else{
+            ofstream foutput("../data/temp/"+overflow_bucket_name,ios::out);
+            for(int i=0;i<rows.size();i++)
+            {
+                foutput << rows[i];
+                foutput<<endl;
+            }
+            foutput.close();
+        i++;
+        }
     }
+    bucket_list[bucket_no].second=overflow_buckets;
 }
-
+/**
+ * @brief This function helps in inserting values into table
+ * 
+ * 
+ * 
+*/
+bool Table::insert(vector<int>row)
+{
+    vector<uint>rows_per_block=this->rowsPerBlockCount;
+    //Incase if last page is not filled completely
+    if(rows_per_block[rows_per_block.size()-1]< this->maxRowsPerBlock)
+    {
+        string page_name="../data/temp/"+this->tableName+ "_Page" + to_string(this->blockCount-1);
+        ofstream fout(page_name,ios::app);
+        for(int i=0;i<row.size();i++)
+        {
+            if(i!=0)
+              fout<<", ";
+            fout<<row[i];
+        }
+        fout<<endl;
+        fout.close();
+        this->rowCount++;
+        this->rowsPerBlockCount[rows_per_block.size()-1]++;
+        return true;
+    }
+    else // If all pages are filled i.e rows==rows_per_block  then create new page and insert values
+    {
+        vector<vector<int>>rowsInPage;
+        rowsInPage.push_back(row);
+        bufferManager.writePage(this->tableName, this->blockCount, rowsInPage, 1);
+        this->blockCount++;
+        this->rowsPerBlockCount.emplace_back(1);
+    }
+    return false;
+}
 
 /**
  * @brief This function returns one row of the table using the cursor object. It
